@@ -35,10 +35,15 @@ function Login() {
                     required></input><br></br>
 
                 <button type="submit">Login</button>
+
+                <p>
+                    Don’t have an account?{" "}
+                    <button onClick={() => navigate("/signup")}>
+                        Signup
+                    </button>
+                </p>
             </form>
-            {/* <button onClick={() => navigate("/signup")}>
-                Go to Signup
-            </button> */}
+
         </div>
     );
 }
