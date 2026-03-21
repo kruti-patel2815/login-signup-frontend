@@ -4,13 +4,14 @@ import { useNavigate } from "react-router-dom";
 
 function Info() {
     const [user, setUser] = useState(null);
-    const [extraData, setExtraData] = useState(null);
+    const [extraData, setExtraData] = useState([]);
     const navigate = useNavigate();
+    const token = localStorage.getItem("token");
 
     useEffect(() => {
         const fetchUser = async () => {
             try {
-                const token = localStorage.getItem("token");
+
                 const res = await axios.get(
                     "http://localhost:5000/info",
                     {
@@ -20,77 +21,103 @@ function Info() {
                     }
                 );
                 setUser(res.data.user);
-                setExtraData(res.data.extraData);
+                setExtraData({
+                    teachers: res.data.teachers,
+                    employees: res.data.employees
+                });
+
             } catch (error) {
                 navigate("/");
             }
         };
+
         fetchUser();
+
     }, [navigate]);
+
     const handleLogout = () => {
         localStorage.removeItem("token");
         navigate("/");
     };
-    const handleEdit = () => {
-        if (!user || !user._id) {
-            alert("User ID not found!");
-            return;
-        }
+
+    const handleEdit = (data) => {
         const editData = {
-            _id: user._id,
-            name: user.name,
-            email: user.email,
-            dob: user.dob,
+            _id: data.userId._id,
+            name: data.userId.name,
+            email: data.userId.email,
+            dob: data.userId.dob,
             role: user.role,
-            rollno: extraData?.rollno || "",
-            remark: extraData?.remark || ""
+            rollno: data.rollno,
+            remark: data.remark
         };
 
-        console.log("Sending to edit:", editData);
         navigate("/signup", { state: { editData } });
     };
 
-    const handleDelete = async () => {
+    const handleSave = async (data) => {
         try {
             const token = localStorage.getItem("token");
-            if (!token) {
-                alert("Please login again");
-                navigate("/");
-                return;
-            }
 
-            if (!user || !user._id) {
-                alert("User ID not found!");
-                return;
-            }
-
-            if (window.confirm("Are you sure you want to delete?")) {
-                await axios.delete(
-                    `http://localhost:5000/user/${user._id}`,
-                    {
-                        headers: {
-                            Authorization: `Bearer ${token}`  
-                        }
+            await axios.post(
+                "http://localhost:5000/save-data",
+                {
+                    rollno: data.rollno,
+                    remark: data.remark,
+                    role: user.role,      
+                    userId: data.userId._id 
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`
                     }
-                );
-                localStorage.removeItem("token");
-                alert("User deleted successfully!");
-                navigate("/");
-            }
+                }
+            );
+
+            alert("Saved Successfully");
+
         } catch (error) {
-            console.error("Delete error:", error);
-            if (error.response?.status === 401) {
-                alert("Session expired! Please login again.");
-                localStorage.removeItem("token");
-                navigate("/");
-            } else {
-                alert("Delete Failed: " + (error.response?.data?.message || error.message));
-            }
+            console.log(error);
+            alert("Save Failed");
         }
     };
 
-    if (!user) return <h3>loading...</h3>;
+    const handleDelete = async (id) => {
+        try {
 
+            const token = localStorage.getItem("token");
+
+            if (user.role === "teacher") {
+                await axios.delete(
+                    `http://localhost:5000/teacher/${id}`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`
+                        }
+                    }
+                );
+            }
+
+            if (user.role === "employee") {
+                await axios.delete(
+                    `http://localhost:5000/employee/${id}`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`
+                        }
+                    }
+                );
+            }
+
+            const updatedData = extraData.filter((item) => item._id !== id);
+            setExtraData(updatedData);
+
+        } catch (error) {
+            alert("Delete Failed");
+        }
+    };
+    if (!user) {
+        return <h2>Loading...</h2>;
+    }
     return (
         <div>
             <h3>Info</h3>
@@ -100,45 +127,138 @@ function Info() {
             <p>Dob: {user.dob?.split("T")[0]}</p>
             <p>Role: {user.role}</p>
 
-            {user.role === "teacher" && extraData && (
-                <>
-                    <h4>Teacher Details</h4>
-                    <p>Name: {extraData.name}</p>
-                    <p>Roll No: {extraData.rollno}</p>
-                    <p>Dob: {extraData.dob}</p>
-                    <p>Remark: {extraData.remark}</p>
-                </>
-            )}
+            {user.role === "teacher" && (
 
-            {user.role === "employee" && extraData && (
+                <>
+                    <h3>Teacher Details</h3>
+
+                    {extraData.teachers?.map((t) => (
+                        <div key={t._id}>
+
+                            <p>
+                                Name: {t.userId.name} ,
+                                Dob: {t.userId.dob?.split("T")[0]}
+                            </p>
+
+                            Rollno:
+                            <input
+                                type="text"
+                                value={t.rollno}
+                                onChange={(e) => {
+                                    const updated = { ...extraData };
+                                    updated.teachers = updated.teachers.map((item) =>
+                                        item._id === t._id ? { ...item, rollno: e.target.value } : item
+                                    );
+                                    setExtraData(updated);
+                                }}
+                            />
+                            Remark:
+                            <input
+                                type="text"
+                                value={t.remark}
+                                onChange={(e) => {
+                                    const updated = { ...extraData };
+                                    updated.teachers = updated.teachers.map((item) =>
+                                        item._id === t._id ? { ...item, remark: e.target.value } : item
+                                    );
+                                    setExtraData(updated);
+                                }}
+                            />
+                            <button onClick={() => handleSave(t)}>Save</button>
+                            <button onClick={() => handleEdit(t)}>
+                                Edit
+                            </button>
+
+                            <button onClick={() => handleDelete(t._id)}>
+                                Delete
+                            </button>
+
+                        </div>
+                    ))}
+
+                </>
+
+            )}
+            {user.role === "employee" && (
                 <>
                     <h4>Employee Details</h4>
-                    <p>Name: {extraData.name}</p>
-                    <p>Roll No: {extraData.rollno}</p>
-                    <p>Dob: {extraData.dob}</p>
-                    <p>Remark: {extraData.remark}</p>
+                    {extraData.employees?.map((t) => (
+                        <div key={t._id}>
+
+                            <p>
+                                Name: {t.userId.name} ,
+                                Dob: {t.userId.dob?.split("T")[0]}
+                            </p>
+
+                            Rollno:
+                            <input
+                                type="text"
+                                value={t.rollno}
+                                onChange={(e) => {
+                                    const updated = { ...extraData };
+                                    updated.employees = updated.employees.map((item) =>
+                                        item._id === t._id ? { ...item, rollno: e.target.value } : item
+                                    );
+                                    setExtraData(updated);
+                                }}
+                            />
+                            Remark:
+                            <input
+                                type="text"
+                                value={t.remark}
+                                onChange={(e) => {
+                                    const updated = { ...extraData };
+                                    updated.employees = updated.employees.map((item) =>
+                                        item._id === t._id ? { ...item, remark: e.target.value } : item
+                                    );
+                                    setExtraData(updated);
+                                }}
+                            />
+                            <button onClick={() => handleSave(t)}>Save</button>
+                            <button onClick={() => handleEdit(t)}>
+                                Edit
+                            </button>
+
+                            <button onClick={() => handleDelete(t._id)}>
+                                Delete
+                            </button>
+
+                        </div>
+                    ))}
+
                 </>
             )}
 
             {user.role === "admin" && extraData && (
                 <>
                     <h3>Teacher</h3>
-                    {extraData.teachers.map((t) => (
+                    {extraData.teachers?.map((t) => (
+
                         <div key={t._id}>
-                            {t.name} - {t.rollno} - {t.dob?.split("T")[0]} - {t.remark}
+
+                            {t.userId.name} -
+                            {t.rollno} -
+                            {t.userId.dob?.split("T")[0]} -
+                            {t.remark}
+
                         </div>
+
                     ))}
                     <h3>Employee</h3>
-                    {extraData.employees.map((t) => (
+                    {extraData.employees?.map((t) => (
+
                         <div key={t._id}>
-                            {t.name} - {t.rollno} - {t.dob?.split("T")[0]} - {t.remark}
+
+                            {t.userId.name} -
+                            {t.rollno} -
+                            {t.userId.dob?.split("T")[0]} -
+                            {t.remark}
+
                         </div>
+
                     ))}
                 </>
             )}
-
-            <button onClick={handleEdit}>Edit</button>
-            <button onClick={handleDelete}>Delete</button>
             <button onClick={handleLogout}>Logout</button>
 
         </div>

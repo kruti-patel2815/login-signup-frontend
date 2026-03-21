@@ -12,35 +12,19 @@ function Signup() {
         email: "",
         password: "",
         dob: "",
-        role: "",
-        rollno: "",
-        remark: ""
+        role: ""
     });
 
     useEffect(() => {
-        console.log("Edit Data in Signup:", editData);
 
-        if (editData && editData._id) {
+        if (editData) {
             setFormData({
                 _id: editData._id,
-                name: editData.name || "",
-                email: editData.email || "",
+                name: editData.name,
+                email: editData.email,
                 password: "",
                 dob: editData.dob ? editData.dob.split("T")[0] : "",
-                role: editData.role || "",
-                rollno: editData.rollno || "",
-                remark: editData.remark || ""
-            });
-        } else {
-
-            setFormData({
-                name: "",
-                email: "",
-                password: "",
-                dob: "",
-                role: "",
-                rollno: "",
-                remark: ""
+                role: editData.role
             });
         }
     }, [editData]);
@@ -51,11 +35,10 @@ function Signup() {
             [e.target.name]: e.target.value
         });
     };
- 
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            console.log("Submitting Data:", formData); 
 
             const token = localStorage.getItem("token");
             const config = token ? {
@@ -63,42 +46,32 @@ function Signup() {
             } : {};
 
             if (formData._id) {
-       
-                console.log("Updating user with ID:", formData._id); 
 
                 const submitData = { ...formData };
                 if (!submitData.password) {
                     delete submitData.password;
                 }
 
-                const response = await axios.put(
+                await axios.put(
                     `http://localhost:5000/user/${formData._id}`,
-                    submitData,  
+                    submitData,
                     config
                 );
-                console.log("Update Response:", response.data);
-                alert("User updated successfully!");
-            } else {
-        
-                await axios.post("http://localhost:5000/signup", formData);
-                alert("User created successfully!");
-            }
-            navigate("/info");
-        } catch (error) {
-            console.error("Submit Error:", error);
-            console.error("Error Response:", error.response); 
 
-            if (error.response?.status === 401) {
-                alert("Session expired! Please login again.");
-                navigate("/");
+                navigate("/info");
+
             } else {
-                alert("Operation Failed: " + (error.response?.data?.message || error.message));
+                await axios.post("http://localhost:5000/signup", formData);
+                navigate("/");   
             }
+
+        } catch (error) {
+            alert("Operation Failed");
         }
     };
     return (
         <div>
-            <h3>{formData._id ? "Edit User" : "Signup"}</h3>
+            <h3>{editData ? "Edit User" : "Signup"}</h3>
 
             <form onSubmit={handleSubmit}>
                 Name: <input type="text" name="name" placeholder="Name" value={formData.name} onChange={handleChange} required /><br></br>
@@ -111,16 +84,10 @@ function Signup() {
 
                 Role: <select name="role" value={formData.role} onChange={handleChange} required>
                     <option value="">Select Role</option>
-                    <option value="employee">Employee</option>
                     <option value="teacher">Teacher</option>
+                    <option value="employee">Employee</option>
                     <option value="admin">Admin</option>
                 </select><br /><br />
-                {(formData.role === "teacher" || formData.role === "employee") && (
-                    <>
-                        Roll No:<input type="text" name="rollno" value={formData.rollno} placeholder="Roll No" onChange={handleChange} required /><br />
-                        Remark:<input type="text" name="remark" value={formData.remark} placeholder="Remark" onChange={handleChange} required /><br />
-                    </>
-                )}
 
                 <button type="submit">{editData ? "Update" : "Signup"}</button>
 
