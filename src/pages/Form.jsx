@@ -28,19 +28,28 @@ function Form({ user, editData, onSuccess }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const finalRole = formData.role || user.role;
+        let res;
 
-        const res = await axios.post(
-            `http://localhost:5000/add-data`,
-            { ...formData, role: finalRole },
-            {
-                headers: { Authorization: `Bearer ${token}` }
-            }
-        );
+        if (editData && editData._id) {
+            res = await axios.put(
+                `http://localhost:5000/${editData.role}/${editData._id}`, 
+                formData,
+                {
+                    headers: { Authorization: `Bearer ${token}` }
+                }
+            );
+        } else {
+            res = await axios.post(
+                `http://localhost:5000/add-data`,
+                formData,
+                {
+                    headers: { Authorization: `Bearer ${token}` }
+                }
+            );
+        }
 
-        onSuccess(res.data);
+        onSuccess(res.data.data);
     };
-
     return (
         <form onSubmit={handleSubmit}>
             Name:-<input name="name" placeholder="Name" value={formData.name} onChange={handleChange} /><br></br>
@@ -48,13 +57,13 @@ function Form({ user, editData, onSuccess }) {
             Remark:-<input name="remark" placeholder="Remark" value={formData.remark} onChange={handleChange} /><br></br>
             Address:-<input name="address" placeholder="Address" value={formData.address} onChange={handleChange} /><br></br>
 
-            {user.role === "admin" && (
-                <select name="role" value={formData.role} onChange={handleChange}>
-                    <option value="">Select Role</option>
-                    <option value="teacher">Teacher</option>
-                    <option value="employee">Employee</option>
-                </select>
-            )}<br></br>
+
+            <select name="role" value={formData.role} onChange={handleChange}>
+                <option value="">Select Role</option>
+                <option value="teacher">Teacher</option>
+                <option value="employee">Employee</option>
+            </select>
+            <br></br>
 
             <button type="submit">Save</button>
         </form>
