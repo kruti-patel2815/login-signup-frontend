@@ -16,6 +16,7 @@ function Login() {
                 { email, password }
             );
             localStorage.setItem("token", res.data.token);
+            localStorage.setItem("email", email);
             navigate("/info");
         } catch (error) {
             alert("Login Fail")
